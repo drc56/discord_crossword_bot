@@ -11,21 +11,21 @@ TOKEN = Path('secret_token.txt').read_text()
 db_con = sqlite3.connect('scores.db')
 bot = commands.Bot(command_prefix='!')
 
-def determine_date() -> str:
+def determine_date(today: bool = True) -> str:
     """The NYT does crossword resets on 10PM EST on weekdays and 6PM EST on weekends.
     So a score after that time is assumed to be a puzzle for the next day
     """
     date = datetime.datetime.now()
     if date.weekday() > 4:
         if date.time() >= datetime.time(18,0,0):
-            return str(date.date() + datetime.timedelta(days=1))
+            return str(date.date() + datetime.timedelta(days=1)) if today else str(date.date())
         else:
-            return str(date.date()) 
+            return str(date.date()) if today else (str(date.date() - datetime.timedelta(days=1)))
     else:
         if date.time() >= datetime.time(22,0,0):
-            return str(date.date() + datetime.timedelta(days=1))
+            return str(date.date() + datetime.timedelta(days=1)) if today else str(date.date())
         else:
-            return str(date.date()) 
+            return str(date.date()) if today else (str(date.date() - datetime.timedelta(days=1)))
 
 def get_word_games_chan_id() -> id:
     for chan in bot.get_all_channels():
@@ -44,10 +44,8 @@ async def remind_for_scores():
             chan = get_word_games_chan_id()
             await chan.send("REMINDER: Complete and submit crossword scores")
 
-@bot.command(name='mini-leader', help="Responds with today's leaderboard")
-async def handle_leaderboard(ctx):
+def build_leaderboard_string(date : str) -> str:
     cur = db_con.cursor()
-    date = determine_date()
     leader_cmd = 'SELECT * FROM scores WHERE date = ? ORDER BY score'
     cur.execute(leader_cmd, [date])
     rows = cur.fetchall()
@@ -56,15 +54,26 @@ async def handle_leaderboard(ctx):
     for row in rows:
         msg += f'\n{place}. {row[0]} : {row[2]}'
         place += 1
-    logging.info(msg)
+    return msg
+
+@bot.command(name='mini-leader', help="Responds with today's leaderboard")
+async def handle_leaderboard(ctx):
+    date = determine_date()
+    msg = build_leaderboard_string(date)
     await ctx.send(msg)
 
+@bot.command(name='mini-yesterday', help="Responds with yesterday's leaderboard")
+async def handle_yesterday_leaderboard(ctx):
+    date = determine_date(False)
+    msg = build_leaderboard_string(date)
+    await ctx.send(msg)
+
+# TODO (Dan) reduce some of the reused code in the below functions
 @bot.command(name='mini-score', help="Allows you to submit your score for today in format m:ss")
 async def handle_mini_score(ctx):
     cur = db_con.cursor()
     m = re.search('!mini-score\s([0-9]+):([0-9][0-9])', ctx.message.content)
     if m is None:
-        # TODO figure out a good way to error handle here
         logging.info(f"Invalid message format: {ctx.message.content}")
         await ctx.send("Error with score message format, try again, must be `m:ss`")
         return
@@ -84,7 +93,6 @@ async def handle_mini_score(ctx):
             logging.info(f'{user} score is {time} for date {date}')
             await ctx.send(f"Score recorded for {user} for {date}")
         else:
-            # (TODO) Figure out how to handle this error
             logging.info(f"Score submitted today {ctx.message.content}")
             await ctx.send(f"{user}, you already submitted a score today")
 
@@ -93,7 +101,6 @@ async def handle_mini_correct(ctx):
     cur = db_con.cursor()
     m = re.search('!mini-correct\s([0-9]+):([0-9][0-9])', ctx.message.content)
     if m is None:
-        # TODO figure out a good way to error handle here
         logging.info(f"Invalid message format: {ctx.message.content}")
         await ctx.send("Error with score message format, try again, must be `m:ss`")
         return
@@ -118,9 +125,18 @@ async def handle_mini_correct(ctx):
             logging.info(f'{user} score is {time} for date {date}')
             await ctx.send(f"Score corrected for {user} for {date}")
 
+@bot.command(name='mini-delete', help='Delete your submitted score')
+async def handle_mini_delete(ctx):
+    cur = db_con.cursor()
+    user = str(ctx.message.author)
+    date = determine_date()
+    delete_cmd = 'DELETE from scores WHERE user = ? AND date = ?'
+    cur.execute(delete_cmd,[user,date])
+    await ctx.send(f"Score deleted for {user} for {date}")
+
 def main():
     logging.basicConfig(filename='crossword_bot.log', level=logging.DEBUG)
-    logging.info('Starting bot')
+    logging.info('Starting the crossword bot')
     bot.run(TOKEN)
     
 if __name__ == '__main__':
