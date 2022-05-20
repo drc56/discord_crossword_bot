@@ -44,6 +44,16 @@ async def remind_for_scores():
             chan = get_word_games_chan_id()
             await chan.send("REMINDER: Complete and submit crossword scores")
 
+def place_emoji_helper(place : int):
+    if place == 1:
+        return ":first_place:"
+    elif place == 2:
+        return ":second_place:"
+    elif place == 3:
+        return ":third_place:"
+    else:
+        return place
+
 def build_leaderboard_string(date : str) -> str:
     cur = db_con.cursor()
     leader_cmd = 'SELECT * FROM scores WHERE date = ? ORDER BY score'
@@ -52,7 +62,7 @@ def build_leaderboard_string(date : str) -> str:
     msg = f'{date} Leaderboard'
     place = 1
     for row in rows:
-        msg += f'\n{place}. {row[0]} : {row[2]}'
+        msg += f'\n{place_emoji_helper(place)}. {row[0]} : {row[2]}'
         place += 1
     return msg
 
