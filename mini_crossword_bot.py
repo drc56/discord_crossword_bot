@@ -5,6 +5,7 @@ import logging
 import re
 import sqlite3
 import pytz
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -60,16 +61,28 @@ def place_emoji_helper(place : int):
     else:
         return place
 
+def convert_to_min_sec(seconds : int) -> str:
+    return time.strftime("%M:%S", time.gmtime(seconds))
+
 def build_leaderboard_string(date : str) -> str:
     cur = db_con.cursor()
     leader_cmd = 'SELECT * FROM scores WHERE date = ? ORDER BY score'
     cur.execute(leader_cmd, [date])
     rows = cur.fetchall()
     msg = f'{date} Leaderboard'
-    place = 1
+
+    place = 0
+    last_score = None
+    tie_count = 0
     for row in rows:
-        msg += f'\n{place_emoji_helper(place)}. {row[0]} : {row[2]}'
-        place += 1
+        if row[2] == last_score:
+            tie_count += 1
+        else:
+            last_score = row[2]
+            place += (1 + tie_count)
+            tie_count = 0
+        msg += f'\n{place_emoji_helper(place)}. {row[0]} : {convert_to_min_sec(row[2])}'
+
     return msg
 
 def parse_message(msg : str, command_key : str, author : str) -> Optional[LeaderboardEntry]:
