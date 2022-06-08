@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+import discord
 from discord.ext import commands, tasks
 
 # TODO need to figure out how to wrap discord bot in object, though honestly not super important
@@ -115,19 +116,9 @@ def delete_score(score : LeaderboardEntry):
     cur.execute(delete_cmd,[score.user,score.date])
     db_con.commit()
 
-# Discord Bot Tasks
-@tasks.loop(hours=1)
-async def remind_for_scores():
-    et = pytz.timezone('US/Eastern')
-    date = datetime.datetime.now().astimezone(et)
-    if date.weekday() > 4:
-        if date.time() >= datetime.time(17,0,0):
-            chan = get_word_games_chan_id()
-            await chan.send("REMINDER: Complete and submit crossword scores")
-    else:
-        if date.time() >= datetime.time(21,0,0):
-            chan = get_word_games_chan_id()
-            await chan.send("REMINDER: Complete and submit crossword scores")
+@bot.event
+async def on_ready():
+    await bot.change_presence(status=discord.Status.idle, activity=discord.Activity(type=discord.ActivityType.listening, name="to !help"))
 
 @bot.command(name='mini-leader', help="Responds with today's leaderboard")
 async def handle_leaderboard(ctx):
