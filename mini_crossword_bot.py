@@ -215,7 +215,7 @@ async def handle_mini_stats(ctx):
     avg_score = cur.execute("SELECT avg(score) FROM scores WHERE user = ?",[str(ctx.message.author)]).fetchall()[0][0]
     best_score = cur.execute("SELECT min(score) FROM scores WHERE user = ?",[str(ctx.message.author)]).fetchall()[0][0]
     total_wins = cur.execute("SELECT COUNT(*) FROM winners WHERE user = ?",[str(ctx.message.author)]).fetchall()[0][0]
-    stats_string = f"{str(ctx.message.author)} stats \nTotal Games: {total_games} \nTotal Wins :trophy::  {total_wins} \nWin Percentage: {(total_wins/total_games * 100.0)}% \nAverage Score :stopwatch:: {avg_score} \nBest Score :race_car: : {best_score}"
+    stats_string = f"{str(ctx.message.author)} stats \nTotal Games: {total_games} \nTotal Wins :trophy::  {total_wins} \nWin Percentage: {(total_wins/total_games * 100.0):.2f}% \nAverage Score :stopwatch:: {avg_score} \nBest Score :race_car: : {best_score}"
 
     await ctx.send(stats_string)
 
