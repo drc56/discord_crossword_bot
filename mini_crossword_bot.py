@@ -47,6 +47,43 @@ def determine_date(today: bool = True) -> str:
         else:
             return str(date.date()) if today else (str(date.date() - datetime.timedelta(days=1)))
 
+class DailyUpdater(commands.Cog):
+    def __init__(self):
+        logging.info("Spinning up the updater")
+        self.date = determine_date()
+    
+    @tasks.loop(hours=1.0)
+    async def update_winner_table(self):
+        # check that 
+        cur_date = determine_date()
+        if cur_date != self.date:
+            cur = db_con.cursor()
+            # TODO this is gross, but it works....
+            day_scores = cur.execute("SELECT * from scores WHERE date = ? ORDER BY score ", [cur_date]).fetchall()
+            winner_list = [day_scores[0][0]]
+            winner_score = day_scores[0][2]
+            if len(day_scores) > 1 :
+                i = 1
+                next_score = day_scores[i][2]
+                next_winner = day_scores[i][0]
+                while(winner_score == next_score):
+                    print(f"winner score{winner_score} next score{next_score}")
+                    winner_list.append(next_winner)
+                    i += 1
+                    if i == len(day_scores):
+                        break
+                    next_score = day_scores[i][2]
+                    next_winner = day_scores[i][0]
+            for winner in winner_list:
+                print(winner)
+                cur.execute("INSERT INTO winners values (?, ?)", [str(winner), str(cur_date)])
+            self.date = cur_date
+        return
+
+    @update_winner_table.before_loop
+    async def before_start(self):
+        await bot.wait_until_ready()
+
 def get_word_games_chan_id() -> id:
     for chan in bot.get_all_channels():
         if chan.name == 'word-games':
@@ -169,6 +206,19 @@ async def handle_mini_delete(ctx):
     score.date = determine_date()
     delete_score(score)
     await ctx.send(f"Score deleted for {score.user} for {score.date}")
+
+@bot.command(name='mini-stats', help='Get your mini stats')
+async def handle_mini_stats(ctx):
+    cur = db_con.cursor()
+
+    total_games = cur.execute("SELECT COUNT(*) FROM scores WHERE user = ?",[str(ctx.message.author)]).fetchall()[0][0]
+    avg_score = cur.execute("SELECT min(score) FROM scores WHERE user = ?",[str(ctx.message.author)]).fetchall()[0][0]
+    best_score = cur.execute("SELECT min(score) FROM scores WHERE user = ?",[str(ctx.message.author)]).fetchall()[0][0]
+    total_wins = cur.execute("SELECT COUNT(*) FROM winners WHERE user = ?",[str(ctx.message.author)]).fetchall()[0][0]
+    stats_string = f"{str(ctx.message.author)} stats \nTotal Games: {total_games} \nTotal Wins :trophy::  {total_wins} \nWin Percentage: {(total_wins/total_games * 100.0)}% \nAverage Score :stopwatch:: {avg_score} \nBest Score :race_car: : {best_score}"
+
+    await ctx.send(stats_string)
+
 
 def main():
     logging.basicConfig(filename='crossword_bot.log', level=logging.WARN)
