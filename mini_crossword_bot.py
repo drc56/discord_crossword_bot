@@ -59,7 +59,7 @@ class DailyUpdater(commands.Cog):
         if cur_date != self.date:
             cur = db_con.cursor()
             # TODO this is gross, but it works....
-            day_scores = cur.execute("SELECT * from scores WHERE date = ? ORDER BY score ", [cur_date]).fetchall()
+            day_scores = cur.execute("SELECT * from scores WHERE date = ? ORDER BY score ", [str(self.date)]).fetchall()
             winner_list = [day_scores[0][0]]
             winner_score = day_scores[0][2]
             if len(day_scores) > 1 :
@@ -76,7 +76,7 @@ class DailyUpdater(commands.Cog):
                     next_winner = day_scores[i][0]
             for winner in winner_list:
                 print(winner)
-                cur.execute("INSERT INTO winners values (?, ?)", [str(winner), str(cur_date)])
+                cur.execute("INSERT INTO winners values (?, ?)", [str(winner), str(self.date)])
             self.date = cur_date
         return
 
