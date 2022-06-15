@@ -51,12 +51,15 @@ class DailyUpdater(commands.Cog):
     def __init__(self):
         logging.info("Spinning up the updater")
         self.date = determine_date()
+        self.update_winner_table.start()
     
     @tasks.loop(hours=1.0)
     async def update_winner_table(self):
         # check that 
+        logging.info("Checking if the winner table needs to be updated")
         cur_date = determine_date()
         if cur_date != self.date:
+            logging.info("Running the update winner update as the date has changed")
             cur = db_con.cursor()
             # TODO this is gross, but it works....
             day_scores = cur.execute("SELECT * from scores WHERE date = ? ORDER BY score ", [str(self.date)]).fetchall()
@@ -67,7 +70,7 @@ class DailyUpdater(commands.Cog):
                 next_score = day_scores[i][2]
                 next_winner = day_scores[i][0]
                 while(winner_score == next_score):
-                    print(f"winner score{winner_score} next score{next_score}")
+                    logging.info(f"winner score{winner_score} next score{next_score}")
                     winner_list.append(next_winner)
                     i += 1
                     if i == len(day_scores):
@@ -75,7 +78,7 @@ class DailyUpdater(commands.Cog):
                     next_score = day_scores[i][2]
                     next_winner = day_scores[i][0]
             for winner in winner_list:
-                print(winner)
+                logging.info(f"The winner is{winner}")
                 cur.execute("INSERT INTO winners values (?, ?)", [str(winner), str(self.date)])
             self.date = cur_date
         return
@@ -221,7 +224,7 @@ async def handle_mini_stats(ctx):
 
 
 def main():
-    logging.basicConfig(filename='crossword_bot.log', level=logging.WARN)
+    logging.basicConfig(filename='crossword_bot.log', level=logging.INFO)
     logging.info('Starting the crossword bot')
     bot.run(TOKEN)
     
