@@ -113,7 +113,7 @@ class DailyUpdater(commands.Cog):
 
     @tasks.loop(hours=1.0)
     async def remind_users(self):
-        if True:
+        if should_remind():
             chan = self.get_chan_id()
             # TODO make this not one guild specific...
             guild = None
