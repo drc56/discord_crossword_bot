@@ -58,12 +58,12 @@ def should_remind(today: bool = True) -> str:
     date = datetime.datetime.now().astimezone(et)
 
     if date.weekday() > 4:
-        if date.time() >= datetime.time(17,0,0):
+        if date.time() >= datetime.time(17,0,0) and date.time() <= datetime.time(18,0,0):
             return True
         else:
             return False
     else:
-        if date.time() >= datetime.time(21,0,0):
+        if date.time() >= datetime.time(21,0,0) and date.time() <= datetime.time(22,0,0):
             return True
         else:
             return False
