@@ -314,7 +314,7 @@ async def handle_mini_join(ctx):
     await asyncio.wait(tasks)
 
 def main():
-    # logging.basicConfig(filename='crossword_bot.log', level=logging.INFO)
+    logging.basicConfig(filename='crossword_bot.log', level=logging.INFO)
     logging.info('Starting the crossword bot')
     daily_updater = DailyUpdater()
     bot.run(TOKEN)
