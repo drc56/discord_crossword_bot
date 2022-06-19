@@ -102,6 +102,7 @@ class DailyUpdater(commands.Cog):
             for winner in winner_list:
                 logging.info(f"The winner is{winner}")
                 cur.execute("INSERT INTO winners values (?, ?)", [str(winner), str(self.date)])
+                db_con.commit()
             self.date = cur_date
         return
     
