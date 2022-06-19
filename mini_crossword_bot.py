@@ -52,7 +52,7 @@ def determine_date(today: bool = True) -> str:
 
 def should_remind(today: bool = True) -> str:
     """The NYT does crossword resets on 10PM EST on weekdays and 6PM EST on weekends.
-    So a score after that time is assumed to be a puzzle for the next day
+    So set a reminder in the hour before the date updates.
     """
     et = pytz.timezone('US/Eastern')
     date = datetime.datetime.now().astimezone(et)
