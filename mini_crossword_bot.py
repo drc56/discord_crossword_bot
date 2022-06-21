@@ -15,11 +15,8 @@ from typing import Optional
 import discord
 from discord.ext import commands, tasks
 
-# TODO need to figure out how to wrap discord bot in object, though honestly not super important
-
 # Globals
 TOKEN = Path('secret_token.txt').read_text()
-db_con = sqlite3.connect('scores.db')
 bot = commands.Bot(command_prefix='!')
 ROLE_NAME = "crossword_players"
 
@@ -83,13 +80,13 @@ class LeaderboardDatabaseConnection:
         cur = self._db_con.cursor()
         insert_cmd = 'INSERT into scores values (?, ?, ?)'
         cur.execute(insert_cmd,[score.user, score.date, score.time])
-        db_con.commit()
+        self._db_con.commit()
 
     def delete_score(self, score : LeaderboardEntry):
         cur = self._db_con.cursor()
         delete_cmd = 'DELETE from scores WHERE user = ? AND date = ?'
         cur.execute(delete_cmd,[score.user,score.date])
-        db_con.commit()
+        self._db_con.commit()
     
     def build_leaderboard(self, date : str):
         cur = self._db_con.cursor()
