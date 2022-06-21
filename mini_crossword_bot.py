@@ -88,26 +88,12 @@ class LeaderboardDatabaseConnection:
         cur.execute(delete_cmd,[score.user,score.date])
         self._db_con.commit()
     
-    def build_leaderboard(self, date : str):
+    def get_scores_for_date(self, date : str):
         cur = self._db_con.cursor()
         leader_cmd = 'SELECT * FROM scores WHERE date = ? ORDER BY score'
         cur.execute(leader_cmd, [date])
         rows = cur.fetchall()
-        msg = f'{date} Leaderboard'
-
-        place = 0
-        last_score = None
-        tie_count = 0
-        for row in rows:
-            if row[2] == last_score:
-                tie_count += 1
-            else:
-                last_score = row[2]
-                place += (1 + tie_count)
-                tie_count = 0
-            msg += f'\n{self._place_emoji_helper(place)}. {row[0]} : {self._convert_to_min_sec(row[2])}'
-
-        return msg
+        return rows
 
     def get_user_stats(self, user: str):
         cur = self._db_con.cursor()
@@ -144,23 +130,6 @@ class LeaderboardDatabaseConnection:
             cur.execute("INSERT INTO winners values (?, ?)", [str(winner), str(date)])
             self._db_con.commit()
     
-    @staticmethod
-    def _place_emoji_helper(place : int):
-        if place == 1:
-            return ":first_place:"
-        elif place == 2:
-            return ":second_place:"
-        elif place == 3:
-            return ":third_place:"
-        else:
-            return place
-
-    @staticmethod
-    def _convert_to_min_sec(seconds : int) -> str:
-        return time.strftime("%M:%S", time.gmtime(seconds))
-
-
-
 class MiniCrosswordBot(commands.Cog):
     def __init__(self, bot : commands.Bot):
         logging.info("Spinning up the updater")
@@ -182,16 +151,50 @@ class MiniCrosswordBot(commands.Cog):
             result.date = determine_date()
             return result
 
+    def _build_leaderboard_string(self, date: str, rows):
+        msg = f'{date} Leaderboard'
+
+        place = 0
+        last_score = None
+        tie_count = 0
+        for row in rows:
+            if row[2] == last_score:
+                tie_count += 1
+            else:
+                last_score = row[2]
+                place += (1 + tie_count)
+                tie_count = 0
+            msg += f'\n{self._place_emoji_helper(place)}. {row[0]} : {self._convert_to_min_sec(row[2])}'
+
+        return msg
+
+    @staticmethod
+    def _place_emoji_helper(place : int):
+        if place == 1:
+            return ":first_place:"
+        elif place == 2:
+            return ":second_place:"
+        elif place == 3:
+            return ":third_place:"
+        else:
+            return place
+
+    @staticmethod
+    def _convert_to_min_sec(seconds : int) -> str:
+        return time.strftime("%M:%S", time.gmtime(seconds))
+
     @commands.command(name='mini-leader', help="Responds with today's leaderboard")
     async def handle_leaderboard(self, ctx):
         date = determine_date()
-        msg = self._db_con.build_leaderboard(date)
+        rows = self._db_con.get_scores_for_date(date)
+        msg = self._build_leaderboard_string(date, rows)
         await ctx.send(msg)
 
     @commands.command(name='mini-yesterday', help="Responds with yesterday's leaderboard")
     async def handle_yesterday_leaderboard(self, ctx):
         date = determine_date(False)
-        msg = self._db_con.build_leaderboard(date)
+        rows = self._db_con.get_scores_for_date(date)
+        msg = self._build_leaderboard_string(date, rows)
         await ctx.send(msg)
 
     @commands.command(name='mini-score', help="Allows you to submit your score for today in format m:ss")
