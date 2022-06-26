@@ -8,4 +8,4 @@ RUN mkdir mini_crossword_bot
 COPY mini_crossword_bot /app/mini_crossword_bot
 RUN mkdir test
 COPY test test/
-CMD ["pytest", "test", "-W ignore::DeprecationWarning", "--junit-xml=results.xml", "--cov=/app/mini_crossword_bot/", "--cov-report", "term-missing", "--cov-config=/src/.coveragerc"]
+CMD ["pytest", "test", "-W ignore::DeprecationWarning", "--junit-xml=results.xml", "--cov=/app/mini_crossword_bot/", "--cov-report", "term-missing", "--cov-config=/app/.coveragerc"]
