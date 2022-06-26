@@ -2,10 +2,10 @@
 
 import asyncio
 import datetime
+from distutils.command.build import build
 import logging
 import re
 import sqlite3
-from venv import create
 import pytz
 import time
 from dataclasses import dataclass
@@ -15,10 +15,11 @@ from typing import Optional
 import discord
 from discord.ext import commands, tasks
 
-# Globals
+# Globals & Configs
 TOKEN = Path('secret_token.txt').read_text()
 bot = commands.Bot(command_prefix='!')
 ROLE_NAME = "crossword_players"
+GUILD_NAME = "Queue Tip Bandits"
 
 # Helper functions and data types
 @dataclass
@@ -47,7 +48,7 @@ def determine_date(today: bool = True) -> str:
         else:
             return str(date.date()) if today else (str(date.date() - datetime.timedelta(days=1)))
 
-def should_remind(today: bool = True) -> str:
+def should_remind() -> bool:
     """The NYT does crossword resets on 10PM EST on weekdays and 6PM EST on weekends.
     So set a reminder in the hour before the date updates.
     """
@@ -106,11 +107,12 @@ class LeaderboardDatabaseConnection:
 
         return stats_string
     
-    def update_winner_table(self, date: str):
-        logging.info("Running the update winner update as the date has changed")
+    def build_winner_list(self, date: str) -> list:
         cur = self._db_con.cursor()
         # TODO this is gross, but it works....
         day_scores = cur.execute("SELECT * from scores WHERE date = ? ORDER BY score ", [str(date)]).fetchall()
+        if not day_scores:
+            return None
         winner_list = [day_scores[0][0]]
         winner_score = day_scores[0][2]
         if len(day_scores) > 1 :
@@ -125,20 +127,28 @@ class LeaderboardDatabaseConnection:
                     break
                 next_score = day_scores[i][2]
                 next_winner = day_scores[i][0]
-        for winner in winner_list:
-            logging.info(f"The winner is{winner}")
-            cur.execute("INSERT INTO winners values (?, ?)", [str(winner), str(date)])
-            self._db_con.commit()
+        return winner_list
+
+    def update_winner_table(self, date: str):
+        cur = self._db_con.cursor()
+        logging.info("Running the update winner update as the date has changed")
+        winner_list = self.build_winner_list(date)
+        if winner_list:
+            for winner in winner_list:
+                logging.info(f"The winner is{winner}")
+                cur.execute("INSERT INTO winners values (?, ?)", [str(winner), str(date)])
+                self._db_con.commit()
     
 class MiniCrosswordBot(commands.Cog):
-    def __init__(self, bot : commands.Bot):
+    def __init__(self, bot : commands.Bot, db_path : str):
         logging.info("Spinning up the updater")
         self.date = determine_date()
         self.update_winner_table.start()
         # self.remind_users.start()
         self._bot = bot
-        self._db_con = LeaderboardDatabaseConnection('scores.db')
+        self._db_con = LeaderboardDatabaseConnection(db_path)
 
+    # Methods to help with handling commands
     @staticmethod
     def _parse_message(msg : str, command_key : str, author : str) -> Optional[LeaderboardEntry]:
         m = re.search(command_key+'\s([0-9]+):([0-9][0-9])', msg)
@@ -183,6 +193,34 @@ class MiniCrosswordBot(commands.Cog):
     def _convert_to_min_sec(seconds : int) -> str:
         return time.strftime("%M:%S", time.gmtime(seconds))
 
+    def get_chan_id(self) -> id:
+        for chan in self._bot.get_all_channels():
+            if chan.name == "word-games":
+                return chan
+    # Command Logic
+    def do_mini_add(self, entry: LeaderboardEntry) -> str:
+        if entry is None:
+            return "Error with score message format, try again, must be `m:ss`"
+        else:
+            if not self._db_con.check_for_existing_score(entry):
+                self._db_con.insert_score(entry)
+                return f"Score recorded for {entry.user} for {entry.date}"
+            else:
+                return f"{entry.user}, you already submitted a score today"
+
+
+    def do_mini_correct(self, entry : LeaderboardEntry) -> str:
+        if entry is None:
+            return  "Error with score message format, try again, must be `m:ss`"
+        else:
+            if not self._db_con.check_for_existing_score(entry):
+                return f"You don't have a score to correct today {entry.user}"
+            else:
+                self._db_con.delete_score(entry)
+                self._db_con.insert_score(entry)
+                return f"Score corrected for {entry.user} for {entry.date}"
+
+    # Command entry points
     @commands.command(name='mini-leader', help="Responds with today's leaderboard")
     async def handle_leaderboard(self, ctx):
         date = determine_date()
@@ -191,7 +229,7 @@ class MiniCrosswordBot(commands.Cog):
         await ctx.send(msg)
 
     @commands.command(name='mini-yesterday', help="Responds with yesterday's leaderboard")
-    async def handle_yesterday_leaderboard(self, ctx):
+    async def handle_yesterday_leaderboard(self, ctx):          
         date = determine_date(False)
         rows = self._db_con.get_scores_for_date(date)
         msg = self._build_leaderboard_string(date, rows)
@@ -200,38 +238,16 @@ class MiniCrosswordBot(commands.Cog):
     @commands.command(name='mini-score', help="Allows you to submit your score for today in format m:ss")
     async def handle_mini_score(self, ctx):
         res = self._parse_message(ctx.message.content, '!mini-score', ctx.message.author)
-        if res is None:
-            logging.info(f"Invalid message format: {ctx.message.content}")
-            await ctx.send("Error with score message format, try again, must be `m:ss`")
-            return
-        else:
-            if not self._db_con.check_for_existing_score(res):
-                self._db_con.insert_score(res)
-                await ctx.send(f"Score recorded for {res.user} for {res.date}")
-            else:
-                logging.info(f"Score submitted today {ctx.message.content}")
-                await ctx.send(f"{res.user}, you already submitted a score today")
-
+        await ctx.send(self.do_mini_add(res))
+    
     @commands.command(name='mini-correct', help="Correct your score if you made a mistake submitting today")
     async def handle_mini_correct(self, ctx):
         res = self._parse_message(ctx.message.content, '!mini-correct', ctx.message.author)
-        if res is None:
-            logging.info(f"Invalid message format: {ctx.message.content}")
-            await ctx.send("Error with score message format, try again, must be `m:ss`")
-            return
-        else:
-            if not self._db_con.check_for_existing_score(res):
-                await ctx.send(f"You don't have a score to correct today {res.user}")
-            else:
-                self._db_con.delete_score(res)
-                self._db_con.insert_score(res)
-                await ctx.send(f"Score corrected for {res.user} for {res.date}")
+        await ctx.send(self.do_mini_correct(res))
 
     @commands.command(name='mini-delete', help='Delete your submitted score')
     async def handle_mini_delete(self, ctx):
-        score = LeaderboardEntry()
-        score.user = str(ctx.message.author)
-        score.date = determine_date()
+        score = LeaderboardEntry(user=ctx.message.author, date=determine_date())
         self._db_con.delete_score(score)
         await ctx.send(f"Score deleted for {score.user} for {score.date}")
 
@@ -266,8 +282,9 @@ class MiniCrosswordBot(commands.Cog):
         tasks = [ctx.message.author.remove_roles(role), ctx.send(f"Removing {ctx.message.author} from the mini crossword reminder group")]
         await asyncio.wait(tasks)
 
+    # Tasks and task setup
     @tasks.loop(hours=1.0)
-    async def update_winner_table(self, ctx):
+    async def update_winner_table(self):
         # check that 
         logging.info("Checking if the winner table needs to be updated")
         cur_date = determine_date()
@@ -275,24 +292,13 @@ class MiniCrosswordBot(commands.Cog):
             self._db_con.update_winner_table(self.date)
             self.date = cur_date
         return
-    
-    @update_winner_table.before_loop
-    async def before_start(self):
-        await self._bot.wait_until_ready()
 
-    def get_chan_id(self) -> id:
-        for chan in self._bot.get_all_channels():
-            if chan.name == "word-games":
-                return chan
-
-    @tasks.loop(hours=1.0)
-    async def remind_users(self):
+    def reminder_task(self) -> Optional[str]:
         if should_remind():
-            chan = self.get_chan_id()
             # TODO make this not one guild specific...
             guild = None
             for guild_id in bot.guilds:
-                if str(guild_id) == "Queue Tip Bandits":
+                if str(guild_id) == GUILD_NAME:
                     guild = guild_id
                     break
             role_id = None
@@ -301,7 +307,19 @@ class MiniCrosswordBot(commands.Cog):
                     role_id = role
                     break
             if role_id:
-                await chan.send(f"Don't forget to submit your crossword scores <@&{role_id.id}>")
+                return f"Don't forget to submit your crossword scores <@&{role_id.id}>"
+        return None
+
+    @tasks.loop(hours=1.0)
+    async def remind_users(self):
+        msg = self.reminder_task()
+        if msg:
+            chan = self.get_chan_id()
+            await chan.send(msg)
+    
+    @update_winner_table.before_loop
+    async def before_start(self):
+        await self._bot.wait_until_ready()
 
     @remind_users.before_loop
     async def before_start(self):
@@ -331,7 +349,7 @@ def main():
     logging.basicConfig(filename='crossword_bot.log', level=logging.INFO)
     logging.info('Starting the crossword bot')
     # daily_updater = DailyUpdater()
-    bot.add_cog(MiniCrosswordBot(bot))
+    bot.add_cog(MiniCrosswordBot(bot, 'scores.db'))
     bot.run(TOKEN)
     
 if __name__ == '__main__':
