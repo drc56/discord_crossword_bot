@@ -18,4 +18,4 @@ relative_files = True
 ; the second path is the path as it appears within the Docker container
 source =
   .
-  /app/mini_crossword_bot
+  /app
