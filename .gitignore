@@ -2,3 +2,5 @@
 *.db
 secret_token.txt
 *.log
+__pycache__
+.pytest_cache
