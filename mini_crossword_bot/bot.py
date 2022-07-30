@@ -17,7 +17,11 @@ from discord.ext import commands, tasks
 
 # Globals & Configs
 TOKEN = Path('secret_token.txt').read_text()
+<<<<<<< HEAD
 g_bot = commands.Bot(command_prefix='!')
+=======
+bot = commands.Bot(command_prefix='!')
+>>>>>>> master
 ROLE_NAME = "crossword_players"
 GUILD_NAME = "Queue Tip Bandits"
 
@@ -92,7 +96,12 @@ class LeaderboardDatabaseConnection:
     def get_scores_for_date(self, date : str):
         cur = self._db_con.cursor()
         leader_cmd = 'SELECT * FROM scores WHERE date = ? ORDER BY score'
+<<<<<<< HEAD
         rows = cur.execute(leader_cmd, [date]).fetchall()
+=======
+        cur.execute(leader_cmd, [date])
+        rows = cur.fetchall()
+>>>>>>> master
         return rows
 
     def get_user_stats(self, user: str):
@@ -139,6 +148,7 @@ class LeaderboardDatabaseConnection:
                 self._db_con.commit()
     
 class MiniCrosswordBot(commands.Cog):
+<<<<<<< HEAD
     def __init__(self, bot : commands.Bot, ldbc : LeaderboardDatabaseConnection):
         logging.info("Spinning up the updater")
         self.date = determine_date()
@@ -146,13 +156,35 @@ class MiniCrosswordBot(commands.Cog):
         self.remind_users.start()
         self._bot = bot
         self._db_con = ldbc
+=======
+    def __init__(self, bot : commands.Bot, db_path : str):
+        logging.info("Spinning up the updater")
+        self.date = determine_date()
+        self.update_winner_table.start()
+        # self.remind_users.start()
+        self._bot = bot
+        self._db_con = LeaderboardDatabaseConnection(db_path)
+>>>>>>> master
 
     # Methods to help with handling commands
     @staticmethod
     def _parse_message(msg : str, command_key : str, author : str) -> Optional[LeaderboardEntry]:
         m = re.search(command_key+'\s([0-9]+):([0-9][0-9])', msg)
         if m is None:
+<<<<<<< HEAD
             return None
+=======
+            m = re.search(command_key+'\s([0-9][0-9])', msg)
+            if m is None:
+                m = re.search(command_key+'\s([0-9])', msg)
+                if m is None:
+                   return None
+            result = LeaderboardEntry()
+            result.time = int(m.group(1))
+            result.user = str(author)
+            result.date = determine_date()
+            return result
+>>>>>>> master
         else:
             result = LeaderboardEntry()
             result.time = int(m.group(1)) * 60 + int(m.group(2))
@@ -322,7 +354,11 @@ class MiniCrosswordBot(commands.Cog):
 
     @remind_users.before_loop
     async def before_start(self):
+<<<<<<< HEAD
         await self._bot.wait_until_ready()
+=======
+        await bot.wait_until_ready()
+>>>>>>> master
 
 # Setup Things
 async def create_crossword_role(guild : discord.guild):
@@ -335,12 +371,21 @@ async def create_crossword_role(guild : discord.guild):
 
 async def create_crossword_role_all_guilds():
     logging.info("create all the roles")
+<<<<<<< HEAD
     tasks = [create_crossword_role(guild) for guild in g_bot.guilds]
     await asyncio.wait(tasks)
 
 @g_bot.event
 async def on_ready():
     tasks = [create_crossword_role_all_guilds(), g_bot.change_presence(status=discord.Status.idle, activity=discord.Activity(type=discord.ActivityType.listening, name="to !help"))]
+=======
+    tasks = [create_crossword_role(guild) for guild in bot.guilds]
+    await asyncio.wait(tasks)
+
+@bot.event
+async def on_ready():
+    tasks = [create_crossword_role_all_guilds(), bot.change_presence(status=discord.Status.idle, activity=discord.Activity(type=discord.ActivityType.listening, name="to !help"))]
+>>>>>>> master
     await asyncio.wait(tasks)
 
 
@@ -348,9 +393,17 @@ def main():
     logging.basicConfig(filename='crossword_bot.log', level=logging.INFO)
     logging.info('Starting the crossword bot')
     # daily_updater = DailyUpdater()
+<<<<<<< HEAD
     ldbc = LeaderboardDatabaseConnection('scores.db')
     g_bot.add_cog(MiniCrosswordBot(g_bot, ldbc))
     g_bot.run(TOKEN)
     
 if __name__ == '__main__':
     main() 
+=======
+    bot.add_cog(MiniCrosswordBot(bot, 'scores.db'))
+    bot.run(TOKEN)
+    
+if __name__ == '__main__':
+    main() 
+>>>>>>> master
