@@ -41,6 +41,8 @@ async def test_build_winner_list(discord_bot_mocker, return_vals, expected):
       ('!mini-score 0:48','dan',f'Score recorded for dan for {determine_date()}'),  
       ('!mini-score 1:48','dan',f'Score recorded for dan for {determine_date()}'),  
       ('!mini-score 0:148','dan',f'Score recorded for dan for {determine_date()}'), 
+      ('!mini-score 48','dan',f'Score recorded for dan for {determine_date()}'), 
+      ('!mini-score 4','dan',f'Score recorded for dan for {determine_date()}'), 
       ('!mini-score XYZ','dan',f'Error with score message format, try again, must be `m:ss`'),  
       ('!mini-score 2m42s','dan',f'Error with score message format, try again, must be `m:ss`'),  
     ]
@@ -67,6 +69,8 @@ async def test_mini_score_exists(discord_bot_mocker, msg, author, expected):
       ('!mini-correct 0:48','dan',f'Score corrected for dan for {determine_date()}'),  
       ('!mini-correct 1:48','dan',f'Score corrected for dan for {determine_date()}'),  
       ('!mini-correct 0:148','dan',f'Score corrected for dan for {determine_date()}'), 
+      ('!mini-correct 48','dan',f'Score corrected for dan for {determine_date()}'), 
+      ('!mini-correct 4','dan',f'Score corrected for dan for {determine_date()}'), 
       ('!mini-correct XYZ','dan',f'Error with score message format, try again, must be `m:ss`'),  
       ('!mini-correct 2m42s','dan',f'Error with score message format, try again, must be `m:ss`'),  
     ]

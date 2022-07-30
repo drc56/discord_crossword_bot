@@ -152,9 +152,9 @@ class MiniCrosswordBot(commands.Cog):
     def _parse_message(msg : str, command_key : str, author : str) -> Optional[LeaderboardEntry]:
         m = re.search(command_key+'\s([0-9]+):([0-9][0-9])', msg)
         if m is None:
-            m = re.search(command_key+'\s([0-9][0-9])', msg)
+            m = re.search(command_key+'\s([0-9][0-9])$', msg)
             if m is None:
-                m = re.search(command_key+'\s([0-9])', msg)
+                m = re.search(command_key+'\s([0-9])$', msg)
                 if m is None:
                    return None
             result = LeaderboardEntry()
