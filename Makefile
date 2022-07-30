@@ -1,7 +1,7 @@
 docker:
 	docker build -t crossword-discord .
 
-run:
+run: docker
 	docker run -v  $(shell pwd)/scores.db:/app/scores.db crossword-discord
 
 clean:
