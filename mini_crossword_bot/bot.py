@@ -158,12 +158,11 @@ class MiniCrosswordBot(commands.Cog):
                 m = re.search(command_key+'\s([0-9])', msg)
                 if m is none
                    return None
-            else:
-                result = LeaderboardEntry()
-                result.time = int(m.group(1))
-                result.user = str(author)
-                result.date = determine_date()
-                return result
+            result = LeaderboardEntry()
+            result.time = int(m.group(1))
+            result.user = str(author)
+            result.date = determine_date()
+            return result
         else:
             result = LeaderboardEntry()
             result.time = int(m.group(1)) * 60 + int(m.group(2))
