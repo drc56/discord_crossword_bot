@@ -17,6 +17,3 @@ install:
   - travis_retry pip install coveralls
 script:
   - make test
-after_success:
-  # Upload coverage information to Coveralls.
-  - coveralls
