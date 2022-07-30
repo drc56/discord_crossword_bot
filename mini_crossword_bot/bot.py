@@ -155,7 +155,9 @@ class MiniCrosswordBot(commands.Cog):
         if m is None:
             m = re.search(command_key+'\s([0-9][0-9])', msg)
             if m is None
-                return None
+                m = re.search(command_key+'\s([0-9])', msg)
+                if m is none
+                   return None
             else:
                 result = LeaderboardEntry()
                 result.time = int(m.group(1))
