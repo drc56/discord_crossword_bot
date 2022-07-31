@@ -208,7 +208,7 @@ class MiniCrosswordBot(commands.Cog):
     # Command Logic
     def do_mini_add(self, entry: LeaderboardEntry) -> str:
         if entry is None:
-            return "Error with score message format, try again, must be `m:ss`"
+            return "Error with score message format, try again, must be `m:ss` or 'ss'"
         else:
             if not self._db_con.check_for_existing_score(entry):
                 self._db_con.insert_score(entry)
@@ -219,7 +219,7 @@ class MiniCrosswordBot(commands.Cog):
 
     def do_mini_correct(self, entry : LeaderboardEntry) -> str:
         if entry is None:
-            return  "Error with score message format, try again, must be `m:ss`"
+            return  "Error with score message format, try again, must be `m:ss` or 'ss'"
         else:
             if not self._db_con.check_for_existing_score(entry):
                 return f"You don't have a score to correct today {entry.user}"
